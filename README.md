@@ -272,3 +272,6 @@ Detailed guides and external references.
 - [ATC Cloud Readiness Check Variants for S/4HANA Cloud](https://github.com/SAP/abap-atc-cr-cv-s4hc) - API classification data used by ATC checks
 - [Clean Core Extensibility Whitepaper](https://www.sap.com/documents/2024/09/20aece06-d87e-0010-bca6-c68f7e60039b.html)
 - [Usage Data Collection](https://help.sap.com/docs/ABAP_PLATFORM_NEW/ba879a6e2ea04d9bb94c7ccd7cdac446/ca200f7002394c809d90873e19e5ac84.html)
+
+## Notices
+Customers are responsible for making their own independent assessment of the information in this Guidance. This Guidance: (a) is for informational purposes only, (b) represents AWS current product offerings and practices, which are subject to change without notice, and (c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided “as is” without warranties, representations, or conditions of any kind, whether express or implied. AWS responsibilities and liabilities to its customers are controlled by AWS agreements, and this Guidance is not part of, nor does it modify, any agreement between AWS and its customers.
