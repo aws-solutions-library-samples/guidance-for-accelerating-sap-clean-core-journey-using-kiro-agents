@@ -1,0 +1,6 @@
+{
+  "description": "User-defined API to business function mappings. These take priority over SAP reference data.",
+  "lastUpdated": null,
+  "customMappings": {
+  }
+}

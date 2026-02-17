@@ -1,214 +1,274 @@
-# Guidance Title (required)
+# Accelerate your SAP Clean Core journey with Kiro Agents
 
-The Guidance title should be consistent with the title established first in Alchemy.
+AI-powered agents for SAP custom code analysis: Clean Core compliance, documentation generation, unused code discovery, and executive reporting.
 
-**Example:** *Guidance for Product Substitutions on AWS*
+## Table of Contents
 
-This title correlates exactly to the Guidance it’s linked to, including its corresponding sample code repository. 
+1. [Why clean core?](#1-why-clean-core)
+2. [Architecture](#2-architecture)
+3. [Prerequisites](#3-prerequisites)
+4. [Setup](#4-setup)
+5. [Quick start](#5-quick-start)
+6. [Troubleshooting](#6-troubleshooting)
+7. [Security configuration guide](#7-security-configuration-guide)
+8. [Documentation & references](#8-documentation--references)
 
+---
 
-## Table of Contents (required)
+## 1. Why clean core?
 
-List the top-level sections of the README template, along with a hyperlink to the specific section.
+SAP Clean Core is about decoupling custom extensions from SAP standard code through ABAP Cloud and reliable development technologies. The goal is upgrade stability -- keeping your S/4HANA system maintainable and cloud-ready as SAP evolves. Custom code that depends on internal SAP objects creates upgrade risk; Clean Core governance quantifies and reduces that risk.
 
-### Required
+The [Clean Core Extensibility whitepaper](https://www.sap.com/documents/2024/09/20aece06-d87e-0010-bca6-c68f7e60039b.html) defines four compliance levels:
 
-1. [Overview](#overview-required)
-    - [Cost](#cost)
-2. [Prerequisites](#prerequisites-required)
-    - [Operating System](#operating-system-required)
-3. [Deployment Steps](#deployment-steps-required)
-4. [Deployment Validation](#deployment-validation-required)
-5. [Running the Guidance](#running-the-guidance-required)
-6. [Next Steps](#next-steps-required)
-7. [Cleanup](#cleanup-required)
-8. [Notices](#notices-optional)
+| Level | ATC Result | What it means | Action |
+|-------|-----------|---------------|--------|
+| **A** | No findings | Fully compliant with Clean Core | Cloud-ready, no action needed |
+| **B** | Info only | Uses documented extension points | Acceptable, low upgrade risk |
+| **C** | Warnings | Uses internal or undocumented APIs | Conditionally clean, verify before upgrades |
+| **D** | Errors | Non-released APIs, modifications, or blocked patterns | Requires remediation |
 
-***Optional***
+These agents automate the assessment. The `sap-atc-checker` runs ATC checks against your custom code and classifies every Z* object into Levels A-D. From there, `business-function-mapper` generates executive summaries, `sap-custom-code-documenter` produces developer and business documentation, and `sap-unused-code-discovery` identifies dead code you can remove before starting remediation.
 
-8. [FAQ, known issues, additional considerations, and limitations](#faq-known-issues-additional-considerations-and-limitations-optional)
-9. [Revisions](#revisions-optional)
-10. [Authors](#authors-optional)
+---
 
-## Overview (required)
+## 2. Architecture
 
-1. Provide a brief overview explaining the what, why, or how of your Guidance. You can answer any one of the following to help you write this:
+Kiro CLI agents connect to SAP through a Docker-based MCP server, as shown in the diagram below.
 
-    - **Why did you build this Guidance?**
-    - **What problem does this Guidance solve?**
+```
+┌─────────────────────────────┐      ┌──────────────┐          ┌────────────┐
+│      Kiro CLI Agents        │      │  MCP Server  │          │ SAP System │
+│                             │ MCP  │   (Docker)   │ ADT API  │            │
+│  Instructions   Scripts     │◄────►│    ABAP      │◄────────►│  S/4HANA   │
+│   (Text)       (Python)     │      │ Accelerator  │          │            │
+└─────────────────────────────┘      └──────────────┘          └────────────┘
+```
 
-2. Include the architecture diagram image, as well as the steps explaining the high-level overview and flow of the architecture. 
-    - To add a screenshot, create an ‘assets/images’ folder in your repository and upload your screenshot to it. Then, using the relative file path, add it to your README. 
+1. **Kiro CLI agents**: Five specialized agents run locally within a security boundary. Each agent has text-based instructions and optional Python scripts for local processing (report generation, data parsing).
 
-### Cost ( required )
+2. **MCP server**: The [SAP ABAP Accelerator](https://github.com/aws-solutions-library-samples/guidance-for-deploying-sap-abap-accelerator-for-amazon-q-developer) runs as a Docker container, providing SAP connectivity to Kiro CLI agents via the Model Context Protocol.
 
-This section is for a high-level cost estimate. Think of a likely straightforward scenario with reasonable assumptions based on the problem the Guidance is trying to solve. Provide an in-depth cost breakdown table in this section below ( you should use AWS Pricing Calculator to generate cost breakdown ).
+3. **SAP system**: Target SAP ECC or S/4HANA system where ABAP code resides.
 
-Start this section with the following boilerplate text:
+---
 
-_You are responsible for the cost of the AWS services used while running this Guidance. As of <month> <year>, the cost for running this Guidance with the default settings in the <Default AWS Region (Most likely will be US East (N. Virginia)) > is approximately $<n.nn> per month for processing ( <nnnnn> records )._
+## 3. Prerequisites
 
-Replace this amount with the approximate cost for running your Guidance in the default Region. This estimate should be per month and for processing/serving resonable number of requests/entities.
+These agents connect to SAP through the [SAP ABAP Accelerator](https://github.com/aws-solutions-library-samples/guidance-for-deploying-sap-abap-accelerator-for-amazon-q-developer) MCP server. Verify the following before setup.
 
-Suggest you keep this boilerplate text:
-_We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance._
+### 3.1 System requirements
 
-### Sample Cost Table ( required )
+| Requirement | Verification | Install |
+|-------------|--------------|---------|
+| Docker (running) | `docker ps` | [Docker Install](https://docs.docker.com/engine/install/) |
+| Python 3.8+ | `python3 --version` | Your package manager |
+| Kiro-CLI | `kiro-cli --version` | [Kiro CLI](https://kiro.dev/docs/cli/) |
+| MCP Docker Image | `docker images \| grep abap-accelerator` | [ABAP Accelerator](https://github.com/aws-solutions-library-samples/guidance-for-deploying-sap-abap-accelerator-for-amazon-q-developer) |
 
-**Note : Once you have created a sample cost table using AWS Pricing Calculator, copy the cost breakdown to below table and upload a PDF of the cost estimation on BuilderSpace. Do not add the link to the pricing calculator in the ReadMe.**
+**AI model:** All agents are configured to use `claude-opus-4.5`. You can change this by editing the `"model"` field in each agent config file under `.kiro/agents/*.json`. See [Kiro CLI docs](https://kiro.dev/docs/cli/) for supported model values.
 
-The following table provides a sample cost breakdown for deploying this Guidance with the default parameters in the US East (N. Virginia) Region for one month.
+### 3.2 SAP system requirements
 
-| AWS service  | Dimensions | Cost [USD] |
-| ----------- | ------------ | ------------ |
-| Amazon API Gateway | 1,000,000 REST API calls per month  | $ 3.50month |
-| Amazon Cognito | 1,000 active users per month without advanced security feature | $ 0.00 |
+Verify these in SAP:
 
-## Prerequisites (required)
+| Requirement | How to verify |
+|-------------|---------------|
+| S/4HANA 2023 or 2025 (Central System) | System information |
+| Satellite system release > 7.52 (e.g., ECC) | System information |
+| CLEAN_CORE variant exists | Transaction `ATC` > Manage Check Variants > Search for `CLEAN_CORE` or similar |
+| ADT services enabled | `curl https://<host>/sap/bc/adt/discovery` returns XML |
+| User has ATC authorization | Authorization objects: `S_ATC_*`, `S_DEVELOP` |
+| Custom code exists (Z*) | Transaction `SE80` > Your package |
 
-### Operating System (required)
+**If CLEAN_CORE variant does not exist:** The variant may be named differently in your system (e.g., `CLEAN_CORE_LOCAL`, `Z_CLEAN_CORE`). Check with your ATC administrator for the correct variant name. If no Clean Core variant exists at all, create one via transaction `ATC` > Manage Check Variants. Without it, ATC checks use system defaults and will not assess Clean Core compliance. See [SAP Note 3565942](https://me.sap.com/notes/3565942) for details.
 
-- Talk about the base Operating System (OS) and environment that can be used to run or deploy this Guidance, such as *Mac, Linux, or Windows*. Include all installable packages or modules required for the deployment. 
-- By default, assume Amazon Linux 2/Amazon Linux 2023 AMI as the base environment. All packages that are not available by default in AMI must be listed out.  Include the specific version number of the package or module.
+Alternatively, Clean Core checks support a Central ATC configuration where one check system serves multiple SAP systems. See [Remote Code Analysis in ATC](https://community.sap.com/t5/technology-blog-posts-by-sap/remote-code-analysis-in-atc-one-central-check-system-for-multiple-systems/ba-p/13307811) for setup details and pre-requisites.
 
-**Example:**
-“These deployment instructions are optimized to best work on **<Amazon Linux 2 AMI>**.  Deployment in another OS may require additional steps.”
+---
 
-- Include install commands for packages, if applicable.
+## 4. Setup
 
+Steps to configure the SAP connection and verify everything works.
 
-### Third-party tools (If applicable)
+### 4.1 Clone
 
-*List any installable third-party tools required for deployment.*
+```bash
+git clone <repo-url> clean-core && cd clean-core
+cp mcp/sap.env.example mcp/sap.env
+```
 
+### 4.2 Configure SAP connection
 
-### AWS account requirements (If applicable)
+Edit `mcp/sap.env` with your SAP connection details:
+```
+SAP_SID=A4H
+SAP_DESCRIPTION=Dev System
+SAP_HOST=sap.example.com:8000
+SAP_CLIENT=001
+SAP_USERNAME=youruser
+SAP_LANGUAGE=EN
+SAP_SECURE=true                   # false if no SSL setup
+```
 
-*List out pre-requisites required on the AWS account if applicable, this includes enabling AWS regions, requiring ACM certificate.*
+### 4.3 Set SAP password
 
-**Example:** “This deployment requires you have public ACM certificate available in your AWS account”
+Add your SAP password to `secrets/sap_password` (the file must contain only the password, no trailing newline):
 
-**Example resources:**
-- ACM certificate 
-- DNS record
-- S3 bucket
-- VPC
-- IAM role with specific permissions
-- Enabling a Region or service etc.
+```bash
+echo -n "yourpassword" > secrets/sap_password
+```
 
+### 4.4 Verify setup
 
-### aws cdk bootstrap (if sample code has aws-cdk)
+```bash
+./check-setup.sh
+```
 
-<If using aws-cdk, include steps for account bootstrap for new cdk users.>
+All 30 checks should pass. If any fail, see [Troubleshooting](#6-troubleshooting).
 
-**Example blurb:** “This Guidance uses aws-cdk. If you are using aws-cdk for first time, please perform the below bootstrapping....”
+**Options:**
+```bash
+./check-setup.sh --quiet            # Silent mode, exit code only
+./check-setup.sh --json             # JSON output
+./check-setup.sh --verbose          # Extra detail
+./check-setup.sh --test-connection  # Include live SAP connection test
+```
 
-### Service limits  (if applicable)
+---
 
-<Talk about any critical service limits that affect the regular functioning of the Guidance. If the Guidance requires service limit increase, include the service name, limit name and link to the service quotas page.>
+## 5. Quick start
 
-### Supported Regions (if applicable)
+Run agents interactively or in scripted mode.
 
-<If the Guidance is built for specific AWS Regions, or if the services used in the Guidance do not support all Regions, please specify the Region this Guidance is best suited for>
+### 5.1 Run an agent (interactive)
 
+Start any agent with `kiro-cli --agent <name>` and type your prompt:
 
-## Deployment Steps (required)
+| Agent | Command | Example prompt | Requires |
+|-------|---------|----------------|----------|
+| **sap-atc-checker** | `kiro-cli --agent sap-atc-checker` | `"Check package ZFLIGHT"` | — |
+| **sap-custom-code-documenter** | `kiro-cli --agent sap-custom-code-documenter` | `"Document package ZFLIGHT"` | — |
+| **sap-unused-code-discovery** | `kiro-cli --agent sap-unused-code-discovery` | `"Analyze package ZFLIGHT"` | SUSG data in `input/` |
+| **business-function-mapper** | `kiro-cli --agent business-function-mapper` | `"Map findings for ZFLIGHT"` | sap-atc-checker output |
+| **abap-accelerator** | `kiro-cli --agent abap-accelerator` | `"Search for Z* classes"` | — |
 
-Deployment steps must be numbered, comprehensive, and usable to customers at any level of AWS expertise. The steps must include the precise commands to run, and describe the action it performs.
+> **Recommended order:** Run `sap-atc-checker` first. Its output in `reports/atc/` is required by `business-function-mapper` and useful context for other agents. For `sap-unused-code-discovery`, export SUSG data from SAP first — SAP recommends collecting usage data for 6–18 months before export to improve accuracy (see [Usage Data Collection](https://help.sap.com/docs/ABAP_PLATFORM_NEW/ba879a6e2ea04d9bb94c7ccd7cdac446/ca200f7002394c809d90873e19e5ac84.html)).
 
-* All steps must be numbered.
-* If the step requires manual actions from the AWS console, include a screenshot if possible.
-* The steps must start with the following command to clone the repo. ```git clone xxxxxxx```
-* If applicable, provide instructions to create the Python virtual environment, and installing the packages using ```requirement.txt```.
-* If applicable, provide instructions to capture the deployed resource ARN or ID using the CLI command (recommended), or console action.
+### 5.2 Non-interactive mode
 
- 
-**Example:**
+For automation and scripting, pass the prompt directly:
 
-1. Clone the repo using command ```git clone xxxxxxxxxx```
-2. cd to the repo folder ```cd <repo-name>```
-3. Install packages in requirements using command ```pip install requirement.txt```
-4. Edit content of **file-name** and replace **s3-bucket** with the bucket name in your account.
-5. Run this command to deploy the stack ```cdk deploy``` 
-6. Capture the domain name created by running this CLI command ```aws apigateway ............```
+```bash
+kiro-cli chat --trust-all-tools --agent sap-atc-checker --no-interactive "Check package ZFLIGHT"
+```
 
+Append `&` to run in the background:
 
+```bash
+kiro-cli chat --trust-all-tools --agent sap-atc-checker --no-interactive "Check package ZFLIGHT" &
+```
 
-## Deployment Validation  (required)
+**Resume interrupted sessions:** Run the same command again. Agents auto-detect `progress.json` and continue where they left off.
 
-<Provide steps to validate a successful deployment, such as terminal output, verifying that the resource is created, status of the CloudFormation template, etc.>
+### 5.3 Output
 
+Agents write reports to the `reports/` directory, organized by type and package:
 
-**Examples:**
+| Agent | Output location |
+|-------|-----------------|
+| sap-atc-checker | `reports/atc/<PACKAGE>/` |
+| sap-custom-code-documenter | `reports/docs/<PACKAGE>/` |
+| sap-unused-code-discovery | `reports/unused/<PACKAGE>/` |
+| business-function-mapper | `reports/executive/<PACKAGE>/` |
 
-* Open CloudFormation console and verify the status of the template with the name starting with xxxxxx.
-* If deployment is successful, you should see an active database instance with the name starting with <xxxxx> in        the RDS console.
-*  Run the following CLI command to validate the deployment: ```aws cloudformation describe xxxxxxxxxxxxx```
+Each directory contains individual object reports and a `SUMMARY.md` with an overview.
 
+### 5.4 Working with results
 
+- **Identify non-compliance patterns**: Look across reports for recurring findings -- the same internal API used in multiple objects, common Level D violations, or groups of objects that need the same fix. Fixing by pattern is faster than going object by object.
+- **Use reports as a knowledge base**: Feed generated reports into a Gen AI assistant to query your findings -- "which objects depend on CL_GUI_ALV_GRID?", "what are the most common Level D findings?", "draft a remediation plan for these objects."
 
-## Running the Guidance (required)
+---
 
-<Provide instructions to run the Guidance with the sample data or input provided, and interpret the output received.> 
+## 6. Troubleshooting
 
-This section should include:
+Common issues and how to resolve them.
 
-* Guidance inputs
-* Commands to run
-* Expected output (provide screenshot if possible)
-* Output description
+| Problem | Solution |
+|---------|----------|
+| Docker not running | `sudo systemctl start docker` |
+| Permission denied | `chmod 644 secrets/sap_password` |
+| SAP connection fails | Check `mcp/sap.env` values and network |
+| Agent not found | Run from `clean-core` directory |
+| Context overflow | Restart agent, say "Resume" |
+| ATC variant error | Verify a Clean Core variant exists in SAP (see [section 3.2](#32-sap-system-requirements)) |
 
+**Debug SAP connection:**
+```bash
+./check-setup.sh --test-connection
+curl -v https://<SAP_HOST>/sap/bc/adt/discovery    # use http:// if SAP_SECURE=false
+```
 
+---
 
-## Next Steps (required)
+## 7. Security configuration guide
 
-Provide suggestions and recommendations about how customers can modify the parameters and the components of the Guidance to further enhance it according to their requirements.
+Recommended actions to secure your environment before running agents.
 
+### 7.1 Enforce TLS for SAP connections
 
-## Cleanup (required)
+Set `SAP_SECURE=true` in `mcp/sap.env` to encrypt all traffic between the MCP server and SAP. Without TLS, SAP credentials and source code transit the network in cleartext.
 
-- Include detailed instructions, commands, and console actions to delete the deployed Guidance.
-- If the Guidance requires manual deletion of resources, such as the content of an S3 bucket, please specify.
+### 7.2 Secure SAP credentials
 
+- Set file permissions: `chmod 600 mcp/sap.env` and `chmod 644 secrets/sap_password`
+- Use a SAP developer account with the appropriate access -- avoid sharing credentials
+- Verify credentials are git-ignored: `git ls-files --error-unmatch mcp/sap.env` should return an error
+- Rotate SAP passwords according to your organization's policy
 
+### 7.3 Assign SAP authorizations (least privilege)
 
-## FAQ, known issues, additional considerations, and limitations (optional)
+- Read-only agents (atc-checker, documenter, unused-code) need only display access -- do not grant change or create permissions
+- The abap-accelerator agent requires full development access -- restrict to trusted users only
+- Limit authorization scope to only the packages agents need to access
 
+### 7.4 Enable Kiro audit logging
 
-**Known issues (optional)**
+- Enable Kiro prompt logging and Kiro user activity report in your AWS account
+- Review logs periodically for unexpected access patterns
 
-<If there are common known issues, or errors that can occur during the Guidance deployment, describe the issue and resolution steps here>
+### 7.5 Secure generated reports
 
+- Reports in `reports/` may contain SAP source code and internal API details
+- Restrict access to the `reports/` directory to authorized users
+- Do not commit reports to public repositories
 
-**Additional considerations (if applicable)**
+### 7.6 Limit SAP connections per client IP
 
-<Include considerations the customer must know while using the Guidance, such as anti-patterns, or billing considerations.>
+- Run only a few agents in parallel to avoid exhausting SAP work processes or dialog sessions
+- Configure the SAP Web Dispatcher or ICM to limit connections per client IP — see [Limit Connections per Client IP](https://help.sap.com/docs/ABAP_PLATFORM_BW4HANA/683d6a1797a34730a6e005d1e8de6f22/fa9ad653a77949c79dd8cbea83d5cb8f.html) for an example using `icm/client_ip_connection_limit`
 
-**Examples:**
+### 7.7 Download API reference data directly from SAP
 
-- “This Guidance creates a public AWS bucket required for the use-case.”
-- “This Guidance created an Amazon SageMaker notebook that is billed per hour irrespective of usage.”
-- “This Guidance creates unauthenticated public API endpoints.”
+- Download API classification files in `input/` from the official [SAP/abap-atc-cr-cv-s4hc](https://github.com/SAP/abap-atc-cr-cv-s4hc) GitHub repository
+- Verify file integrity after download -- tampered reference data can produce incorrect compliance assessments
 
+---
 
-Provide a link to the *GitHub issues page* for users to provide feedback.
+## 8. Documentation & references
 
+Detailed guides and external references.
 
-**Example:** *“For any feedback, questions, or suggestions, please use the issues tab under this repo.”*
+### 8.1 Documentation
 
-## Revisions (optional)
+- [Agent Guide](docs/agent-guide.md) - Detailed agent capabilities, commands, and usage
+- [Enhancement Guide](docs/enhancement-guide.md) - Ideas for extending and customizing agents
+- [Security Model](docs/SECURITY.md) - Agent permissions and credential handling
 
-Document all notable changes to this project.
+### 8.2 References
 
-Consider formatting this section based on Keep a Changelog, and adhering to Semantic Versioning.
-
-## Notices ( required )
-
-Include below mandatory legal disclaimer for Guidance
-
-*Customers are responsible for making their own independent assessment of the information in this Guidance. This Guidance: (a) is for informational purposes only, (b) represents AWS current product offerings and practices, which are subject to change without notice, and (c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided “as is” without warranties, representations, or conditions of any kind, whether express or implied. AWS responsibilities and liabilities to its customers are controlled by AWS agreements, and this Guidance is not part of, nor does it modify, any agreement between AWS and its customers.*
-
-
-## Authors (optional)
-
-Name of code contributors
+- [ABAP Extensibility Guide - Clean Core (August 2025)](https://community.sap.com/t5/technology-blog-posts-by-sap/abap-extensibility-guide-clean-core-for-sap-s-4hana-cloud-august-2025/ba-p/14175399)
+- [ATC Cloud Readiness Check Variants for S/4HANA Cloud](https://github.com/SAP/abap-atc-cr-cv-s4hc) - API classification data used by ATC checks
+- [Clean Core Extensibility Whitepaper](https://www.sap.com/documents/2024/09/20aece06-d87e-0010-bca6-c68f7e60039b.html)
+- [Usage Data Collection](https://help.sap.com/docs/ABAP_PLATFORM_NEW/ba879a6e2ea04d9bb94c7ccd7cdac446/ca200f7002394c809d90873e19e5ac84.html)
