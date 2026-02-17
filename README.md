@@ -94,7 +94,7 @@ Steps to configure the SAP connection and verify everything works.
 ### 4.1 Clone
 
 ```bash
-git clone <repo-url> clean-core && cd clean-core
+git clone https://github.com/aws-solutions-library-samples/guidance-for-accelerating-sap-clean-core-journey-using-kiro-agents.git clean-core && cd clean-core
 cp mcp/sap.env.example mcp/sap.env
 ```
 
