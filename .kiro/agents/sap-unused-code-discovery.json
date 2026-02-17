@@ -1,0 +1,42 @@
+{
+  "name": "sap-unused-code-discovery",
+  "description": "Identifies unused Z*/Y* custom code using SUSG runtime statistics and reference analysis. Classifies objects as UNUSED, LIKELY_UNUSED, USED, or INDETERMINATE with actionable recommendations.",
+  "prompt": "file://../../agents/unused-code/instructions.md",
+  "mcpServers": {
+    "sap-abap-accelerator": {
+      "command": "./mcp/mcp-launcher.sh",
+      "args": [],
+      "timeout": 20000,
+      "disabled": false
+    }
+  },
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "todo",
+    "introspect",
+    "knowledge",
+    "@sap-abap-accelerator/aws_abap_cb_connection_status",
+    "@sap-abap-accelerator/aws_abap_cb_search_object",
+    "@sap-abap-accelerator/aws_abap_cb_get_source"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "shell",
+    "todo",
+    "introspect",
+    "knowledge",
+    "@sap-abap-accelerator/aws_abap_cb_connection_status",
+    "@sap-abap-accelerator/aws_abap_cb_search_object",
+    "@sap-abap-accelerator/aws_abap_cb_get_source"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://../../agents/unused-code/parse-susg.py"
+  ],
+  "hooks": {},
+  "toolsSettings": {},
+  "model": "claude-opus-4.5"
+}

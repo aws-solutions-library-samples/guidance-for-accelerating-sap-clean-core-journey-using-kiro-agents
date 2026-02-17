@@ -1,0 +1,41 @@
+{
+  "name": "sap-custom-code-documenter",
+  "description": "Generates comprehensive documentation for SAP ABAP custom objects (Z/Y). Analyzes code for purpose, dependencies, and ABAP style (Classic/Modern/Mixed).",
+  "prompt": "file://../../agents/documenter/instructions.md",
+  "mcpServers": {
+    "sap-abap-accelerator": {
+      "command": "./mcp/mcp-launcher.sh",
+      "args": [],
+      "timeout": 20000,
+      "disabled": false
+    }
+  },
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "todo",
+    "introspect",
+    "knowledge",
+    "@sap-abap-accelerator/aws_abap_cb_connection_status",
+    "@sap-abap-accelerator/aws_abap_cb_search_object",
+    "@sap-abap-accelerator/aws_abap_cb_get_source"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "shell",
+    "todo",
+    "introspect",
+    "knowledge",
+    "@sap-abap-accelerator/aws_abap_cb_connection_status",
+    "@sap-abap-accelerator/aws_abap_cb_search_object",
+    "@sap-abap-accelerator/aws_abap_cb_get_source"
+  ],
+  "resources": [
+    "file://AGENTS.md"
+  ],
+  "hooks": {},
+  "toolsSettings": {},
+  "model": "claude-opus-4.5"
+}

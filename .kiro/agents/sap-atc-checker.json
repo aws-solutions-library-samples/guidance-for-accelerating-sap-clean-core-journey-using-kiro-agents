@@ -1,0 +1,41 @@
+{
+  "name": "sap-atc-checker",
+  "description": "Runs SAP ATC checks with configurable variants (default: CLEAN_CORE). Classifies objects into Clean Core Levels A-D with documentation and quick fixes.",
+  "prompt": "file://../../agents/atc-checker/instructions.md",
+  "mcpServers": {
+    "sap-abap-accelerator": {
+      "command": "./mcp/mcp-launcher.sh",
+      "args": [],
+      "timeout": 20000,
+      "disabled": false
+    }
+  },
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "todo",
+    "introspect",
+    "knowledge",
+    "@sap-abap-accelerator/aws_abap_cb_connection_status",
+    "@sap-abap-accelerator/aws_abap_cb_search_object",
+    "@sap-abap-accelerator/aws_abap_cb_run_atc_check"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "shell",
+    "todo",
+    "introspect",
+    "knowledge",
+    "@sap-abap-accelerator/aws_abap_cb_connection_status",
+    "@sap-abap-accelerator/aws_abap_cb_search_object",
+    "@sap-abap-accelerator/aws_abap_cb_run_atc_check"
+  ],
+  "resources": [
+    "file://AGENTS.md"
+  ],
+  "hooks": {},
+  "toolsSettings": {},
+  "model": "claude-opus-4.5"
+}

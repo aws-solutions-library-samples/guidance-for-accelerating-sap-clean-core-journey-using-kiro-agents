@@ -1,0 +1,39 @@
+{
+  "name": "abap-accelerator",
+  "description": "Full-featured SAP ABAP development assistant with unrestricted access to all MCP tools, file operations, and system commands. Use for complex tasks requiring maximum flexibility.",
+  "prompt": "file://../../agents/abap-accelerator/instructions.md",
+  "mcpServers": {
+    "sap-abap-accelerator": {
+      "command": "./mcp/mcp-launcher.sh",
+      "args": [],
+      "timeout": 20000,
+      "disabled": false
+    }
+  },
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "glob",
+    "grep",
+    "thinking",
+    "todo",
+    "web",
+    "introspect",
+    "knowledge",
+    "@sap-abap-accelerator/aws_abap_cb_connection_status",
+    "@sap-abap-accelerator/aws_abap_cb_run_atc_check",
+    "@sap-abap-accelerator/aws_abap_cb_search_object",
+    "@sap-abap-accelerator/aws_abap_cb_get_objects",
+    "@sap-abap-accelerator/aws_abap_cb_get_source",
+    "@sap-abap-accelerator/*"
+  ],
+  "allowedTools": [
+  ],
+  "resources": [
+    "file://AGENTS.md"
+  ],
+  "hooks": {},
+  "toolsSettings": {},
+  "model": "claude-opus-4.5"
+}

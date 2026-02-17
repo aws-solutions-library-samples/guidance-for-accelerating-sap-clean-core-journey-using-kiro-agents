@@ -1,0 +1,28 @@
+{
+  "name": "business-function-mapper",
+  "description": "Enriches ATC reports with business function context. Maps findings to SAP application components (FI-GL, SD-SLS, MM-PUR, BC-ABA) and provides successor recommendations for deprecated APIs. Generates executive summaries grouped by business function.",
+  "prompt": "file://../../agents/business-function-mapper/instructions.md",
+  "mcpServers": {},
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "todo",
+    "introspect",
+    "knowledge"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "shell",
+    "todo",
+    "introspect",
+    "knowledge"
+  ],
+  "resources": [
+    "file://AGENTS.md"
+  ],
+  "hooks": {},
+  "toolsSettings": {},
+  "model": "claude-opus-4.5"
+}
