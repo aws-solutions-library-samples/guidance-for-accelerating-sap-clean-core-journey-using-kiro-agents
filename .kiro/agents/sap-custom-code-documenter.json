@@ -4,10 +4,7 @@
   "prompt": "file://../../agents/documenter/instructions.md",
   "mcpServers": {
     "sap-abap-accelerator": {
-      "command": "./mcp/mcp-launcher.sh",
-      "args": [],
-      "timeout": 20000,
-      "disabled": false
+      "url": "http://localhost:8001/mcp"
     }
   },
   "tools": [

@@ -34,12 +34,12 @@ These agents automate the assessment. The `sap-atc-checker` runs ATC checks agai
 
 ## 2. Architecture
 
-Kiro CLI agents connect to SAP through a Docker-based MCP server, as shown in the diagram below.
+Kiro CLI agents connect to SAP through a Python-based MCP server running locally.
 
 ```
 ┌─────────────────────────────┐      ┌──────────────┐          ┌────────────┐
 │      Kiro CLI Agents        │      │  MCP Server  │          │ SAP System │
-│                             │ MCP  │   (Docker)   │ ADT API  │            │
+│                             │ HTTP │   (Python)   │ ADT API  │            │
 │  Instructions   Scripts     │◄────►│    ABAP      │◄────────►│  S/4HANA   │
 │   (Text)       (Python)     │      │ Accelerator  │          │            │
 └─────────────────────────────┘      └──────────────┘          └────────────┘
@@ -47,7 +47,7 @@ Kiro CLI agents connect to SAP through a Docker-based MCP server, as shown in th
 
 1. **Kiro CLI agents**: Five specialized agents run locally within a security boundary. Each agent has text-based instructions and optional Python scripts for local processing (report generation, data parsing).
 
-2. **MCP server**: The [SAP ABAP Accelerator](https://github.com/aws-solutions-library-samples/guidance-for-deploying-sap-abap-accelerator-for-amazon-q-developer) runs as a Docker container, providing SAP connectivity to Kiro CLI agents via the Model Context Protocol.
+2. **MCP server**: The [SAP ABAP Accelerator](https://github.com/aws-solutions-library-samples/guidance-for-deploying-sap-abap-accelerator-for-amazon-q-developer) runs as a local Python HTTP server on port 8001, providing SAP connectivity to Kiro CLI agents via the Model Context Protocol.
 
 3. **SAP system**: Target SAP ECC or S/4HANA system where ABAP code resides.
 
@@ -61,10 +61,8 @@ These agents connect to SAP through the [SAP ABAP Accelerator](https://github.co
 
 | Requirement | Verification | Install |
 |-------------|--------------|---------|
-| Docker (running) | `docker ps` | [Docker Install](https://docs.docker.com/engine/install/) |
-| Python 3.8+ | `python3 --version` | Your package manager |
+| Python 3.11+ | `python3 --version` | Your package manager |
 | Kiro-CLI | `kiro-cli --version` | [Kiro CLI](https://kiro.dev/docs/cli/) |
-| MCP Docker Image | `docker images \| grep abap-accelerator` | [ABAP Accelerator](https://github.com/aws-solutions-library-samples/guidance-for-deploying-sap-abap-accelerator-for-amazon-q-developer) |
 
 **AI model:** All agents are configured to use `claude-opus-4.5`. You can change this by editing the `"model"` field in each agent config file under `.kiro/agents/*.json`. See [Kiro CLI docs](https://kiro.dev/docs/cli/) for supported model values.
 
@@ -72,10 +70,10 @@ These agents connect to SAP through the [SAP ABAP Accelerator](https://github.co
 
 Verify these in SAP:
 
-| Requirement | How to verify |
+| Requirement | What/How to verify |
 |-------------|---------------|
-| S/4HANA 2023 or 2025 (Central System) | System information |
-| Satellite system release > 7.52 (e.g., ECC) | System information |
+| S/4HANA 2023 or 2025 (Central System) | System information & [Note Analyzer (SAP-NOTE-3627152-CENTRAL.xml)](https://me.sap.com/notes/3627152) |
+| Checked system (e.g., ECC) | [Note Analyzer (SAP-NOTE-3627152-CHECKED.xml)](https://me.sap.com/notes/3627152) |
 | CLEAN_CORE variant exists | Transaction `ATC` > Manage Check Variants > Search for `CLEAN_CORE` or similar |
 | ADT services enabled | `curl https://<host>/sap/bc/adt/discovery` returns XML |
 | User has ATC authorization | Authorization objects: `S_ATC_*`, `S_DEVELOP` |
@@ -91,11 +89,19 @@ Alternatively, Clean Core checks support a Central ATC configuration where one c
 
 Steps to configure the SAP connection and verify everything works.
 
-### 4.1 Clone
+### 4.1 Clone and install MCP server
 
 ```bash
-git clone https://github.com/aws-solutions-library-samples/guidance-for-accelerating-sap-clean-core-journey-using-kiro-agents.git clean-core && cd clean-core
+git clone https://github.com/aws-solutions-library-samples/guidance-for-accelerating-sap-clean-core-journey-using-kiro-agents clean-core
+cd clean-core
 cp mcp/sap.env.example mcp/sap.env
+
+# Clone and set up MCP server
+git clone https://github.com/aws-solutions-library-samples/guidance-for-deploying-sap-abap-accelerator-for-amazon-q-developer aws-abap-accelerator-http
+cd aws-abap-accelerator-http
+python3.11 -m venv venv              # Create isolated Python environment
+venv/bin/pip install -r requirements.txt  # Install MCP server dependencies
+cd ..  # Return to clean-core directory
 ```
 
 ### 4.2 Configure SAP connection
@@ -108,7 +114,7 @@ SAP_HOST=sap.example.com:8000
 SAP_CLIENT=001
 SAP_USERNAME=youruser
 SAP_LANGUAGE=EN
-SAP_SECURE=true                   # false if no SSL setup
+SAP_SECURE=true
 ```
 
 ### 4.3 Set SAP password
@@ -117,6 +123,7 @@ Add your SAP password to `secrets/sap_password` (the file must contain only the 
 
 ```bash
 echo -n "yourpassword" > secrets/sap_password
+chmod 600 secrets/sap_password
 ```
 
 ### 4.4 Verify setup
@@ -125,14 +132,17 @@ echo -n "yourpassword" > secrets/sap_password
 ./check-setup.sh
 ```
 
-All 30 checks should pass. If any fail, see [Troubleshooting](#6-troubleshooting).
+All checks should pass. If any fail, see [Troubleshooting](#6-troubleshooting).
 
 **Options:**
 ```bash
 ./check-setup.sh --quiet            # Silent mode, exit code only
 ./check-setup.sh --json             # JSON output
 ./check-setup.sh --verbose          # Extra detail
-./check-setup.sh --test-connection  # Include live SAP connection test
+
+# To test SAP connectivity, start the MCP server first:
+./mcp/mcp-launcher.sh &
+./check-setup.sh --test-connection
 ```
 
 ---
@@ -141,21 +151,31 @@ All 30 checks should pass. If any fail, see [Troubleshooting](#6-troubleshooting
 
 Run agents interactively or in scripted mode.
 
-### 5.1 Run an agent (interactive)
+### 5.1 Start the MCP server
+
+Before running any agent, start the MCP server in a separate terminal:
+
+```bash
+./mcp/mcp-launcher.sh
+```
+
+The server runs on `http://localhost:8001/mcp`. Keep it running while using agents.
+
+### 5.2 Run an agent (interactive)
 
 Start any agent with `kiro-cli --agent <name>` and type your prompt:
 
 | Agent | Command | Example prompt | Requires |
 |-------|---------|----------------|----------|
-| **sap-atc-checker** | `kiro-cli --agent sap-atc-checker` | `"Check package ZFLIGHT"` | — |
-| **sap-custom-code-documenter** | `kiro-cli --agent sap-custom-code-documenter` | `"Document package ZFLIGHT"` | — |
+| **sap-atc-checker** | `kiro-cli --agent sap-atc-checker` | `"Check package ZFLIGHT"` | - |
+| **sap-custom-code-documenter** | `kiro-cli --agent sap-custom-code-documenter` | `"Document package ZFLIGHT"` | - |
 | **sap-unused-code-discovery** | `kiro-cli --agent sap-unused-code-discovery` | `"Analyze package ZFLIGHT"` | SUSG data in `input/` |
 | **business-function-mapper** | `kiro-cli --agent business-function-mapper` | `"Map findings for ZFLIGHT"` | sap-atc-checker output |
-| **abap-accelerator** | `kiro-cli --agent abap-accelerator` | `"Search for Z* classes"` | — |
+| **abap-accelerator** | `kiro-cli --agent abap-accelerator` | `"Search for Z* classes"` | - |
 
-> **Recommended order:** Run `sap-atc-checker` first. Its output in `reports/atc/` is required by `business-function-mapper` and useful context for other agents. For `sap-unused-code-discovery`, export SUSG data from SAP first — SAP recommends collecting usage data for 6–18 months before export to improve accuracy (see [Usage Data Collection](https://help.sap.com/docs/ABAP_PLATFORM_NEW/ba879a6e2ea04d9bb94c7ccd7cdac446/ca200f7002394c809d90873e19e5ac84.html)).
+> **Recommended order:** Run `sap-atc-checker` first. Its output in `reports/atc/` is required by `business-function-mapper` and useful context for other agents. For `sap-unused-code-discovery`, export SUSG data from SAP first -- SAP recommends collecting usage data for 6-18 months before export to improve accuracy (see [Usage Data Collection](https://help.sap.com/docs/ABAP_PLATFORM_NEW/ba879a6e2ea04d9bb94c7ccd7cdac446/ca200f7002394c809d90873e19e5ac84.html)).
 
-### 5.2 Non-interactive mode
+### 5.3 Non-interactive mode
 
 For automation and scripting, pass the prompt directly:
 
@@ -171,7 +191,7 @@ kiro-cli chat --trust-all-tools --agent sap-atc-checker --no-interactive "Check 
 
 **Resume interrupted sessions:** Run the same command again. Agents auto-detect `progress.json` and continue where they left off.
 
-### 5.3 Output
+### 5.4 Output
 
 Agents write reports to the `reports/` directory, organized by type and package:
 
@@ -184,7 +204,7 @@ Agents write reports to the `reports/` directory, organized by type and package:
 
 Each directory contains individual object reports and a `SUMMARY.md` with an overview.
 
-### 5.4 Working with results
+### 5.5 Working with results
 
 - **Identify non-compliance patterns**: Look across reports for recurring findings -- the same internal API used in multiple objects, common Level D violations, or groups of objects that need the same fix. Fixing by pattern is faster than going object by object.
 - **Use reports as a knowledge base**: Feed generated reports into a Gen AI assistant to query your findings -- "which objects depend on CL_GUI_ALV_GRID?", "what are the most common Level D findings?", "draft a remediation plan for these objects."
@@ -197,8 +217,9 @@ Common issues and how to resolve them.
 
 | Problem | Solution |
 |---------|----------|
-| Docker not running | `sudo systemctl start docker` |
-| Permission denied | `chmod 644 secrets/sap_password` |
+| MCP server not running | Start with `./mcp/mcp-launcher.sh` in a separate terminal |
+| Connection refused on port 8001 | MCP server not started or crashed -- check terminal output |
+| Permission denied | `chmod 600 secrets/sap_password` and `chmod 600 mcp/sap.env` |
 | SAP connection fails | Check `mcp/sap.env` values and network |
 | Agent not found | Run from `clean-core` directory |
 | Context overflow | Restart agent, say "Resume" |
@@ -206,6 +227,10 @@ Common issues and how to resolve them.
 
 **Debug SAP connection:**
 ```bash
+# Start MCP server first
+./mcp/mcp-launcher.sh &
+
+# Then test connection
 ./check-setup.sh --test-connection
 curl -v https://<SAP_HOST>/sap/bc/adt/discovery    # use http:// if SAP_SECURE=false
 ```
@@ -222,7 +247,7 @@ Set `SAP_SECURE=true` in `mcp/sap.env` to encrypt all traffic between the MCP se
 
 ### 7.2 Secure SAP credentials
 
-- Set file permissions: `chmod 600 mcp/sap.env` and `chmod 644 secrets/sap_password`
+- Set file permissions: `chmod 600 mcp/sap.env` and `chmod 600 secrets/sap_password`
 - Use a SAP developer account with the appropriate access -- avoid sharing credentials
 - Verify credentials are git-ignored: `git ls-files --error-unmatch mcp/sap.env` should return an error
 - Rotate SAP passwords according to your organization's policy
@@ -247,7 +272,7 @@ Set `SAP_SECURE=true` in `mcp/sap.env` to encrypt all traffic between the MCP se
 ### 7.6 Limit SAP connections per client IP
 
 - Run only a few agents in parallel to avoid exhausting SAP work processes or dialog sessions
-- Configure the SAP Web Dispatcher or ICM to limit connections per client IP — see [Limit Connections per Client IP](https://help.sap.com/docs/ABAP_PLATFORM_BW4HANA/683d6a1797a34730a6e005d1e8de6f22/fa9ad653a77949c79dd8cbea83d5cb8f.html) for an example using `icm/client_ip_connection_limit`
+- Configure the SAP Web Dispatcher or ICM to limit connections per client IP -- see [Limit Connections per Client IP](https://help.sap.com/docs/ABAP_PLATFORM_BW4HANA/683d6a1797a34730a6e005d1e8de6f22/fa9ad653a77949c79dd8cbea83d5cb8f.html) for an example using `icm/client_ip_connection_limit`
 
 ### 7.7 Download API reference data directly from SAP
 
@@ -272,6 +297,3 @@ Detailed guides and external references.
 - [ATC Cloud Readiness Check Variants for S/4HANA Cloud](https://github.com/SAP/abap-atc-cr-cv-s4hc) - API classification data used by ATC checks
 - [Clean Core Extensibility Whitepaper](https://www.sap.com/documents/2024/09/20aece06-d87e-0010-bca6-c68f7e60039b.html)
 - [Usage Data Collection](https://help.sap.com/docs/ABAP_PLATFORM_NEW/ba879a6e2ea04d9bb94c7ccd7cdac446/ca200f7002394c809d90873e19e5ac84.html)
-
-## Notices
-Customers are responsible for making their own independent assessment of the information in this Guidance. This Guidance: (a) is for informational purposes only, (b) represents AWS current product offerings and practices, which are subject to change without notice, and (c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided “as is” without warranties, representations, or conditions of any kind, whether express or implied. AWS responsibilities and liabilities to its customers are controlled by AWS agreements, and this Guidance is not part of, nor does it modify, any agreement between AWS and its customers.
