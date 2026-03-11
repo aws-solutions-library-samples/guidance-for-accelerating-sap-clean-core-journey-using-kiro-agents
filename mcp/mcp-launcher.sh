@@ -14,6 +14,32 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 # Load SAP config and export all variables
 SAP_ENV="$PROJECT_ROOT/mcp/sap.env"
 if [[ -f "$SAP_ENV" ]]; then
+    # Validate env file syntax before sourcing (defense-in-depth)
+    # Prevents cryptic bash errors from unquoted values with spaces
+    # and reduces risk of unintended command execution via source
+    env_line_num=0
+    while IFS= read -r env_line || [[ -n "$env_line" ]]; do
+        env_line_num=$((env_line_num + 1))
+        # Skip comments and blank lines
+        [[ "$env_line" =~ ^[[:space:]]*# ]] && continue
+        [[ "$env_line" =~ ^[[:space:]]*$ ]] && continue
+        # Must be KEY=VALUE format with valid identifier
+        if [[ ! "$env_line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+            echo "Error: Invalid syntax in mcp/sap.env line $env_line_num" >&2
+            echo "  Expected: KEY=VALUE or KEY=\"VALUE\"" >&2
+            exit 1
+        fi
+        # Check for unquoted values containing spaces
+        env_value="${env_line#*=}"
+        if [[ "$env_value" =~ [[:space:]] && ! "$env_value" =~ ^\".*\"$ && ! "$env_value" =~ ^\'.*\'$ ]]; then
+            env_key="${env_line%%=*}"
+            echo "Error: Unquoted value with spaces in mcp/sap.env line $env_line_num" >&2
+            echo "  Variable: $env_key" >&2
+            echo "  Fix: Wrap the value in double quotes, e.g., $env_key=\"...\"" >&2
+            exit 1
+        fi
+    done < "$SAP_ENV"
+
     set -a
     # shellcheck source=/dev/null
     source "$SAP_ENV"
