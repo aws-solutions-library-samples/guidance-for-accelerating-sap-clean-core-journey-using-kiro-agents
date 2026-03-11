@@ -75,7 +75,7 @@ log() {
 
 log_verbose() {
     if [ "$VERBOSE" = true ] && [ "$QUIET" = false ] && [ "$JSON" = false ]; then
-        echo "  [verbose] $@"
+        echo "  [verbose] $*"
     fi
 }
 
@@ -458,6 +458,30 @@ check_configuration() {
     log ""
     log "[4/4] Validating configuration..."
 
+    # sap.env syntax: check for unquoted values with spaces
+    if [ -f "$CC_DIR/mcp/sap.env" ]; then
+        local bad_lines=()
+        local ln=0
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            ln=$((ln + 1))
+            [[ "$line" =~ ^[[:space:]]*# ]] && continue
+            [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+            if [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+                local val="${line#*=}"
+                if [[ "$val" =~ [[:space:]] && ! "$val" =~ ^\".*\"$ && ! "$val" =~ ^\'.*\'$ ]]; then
+                    local key="${line%%=*}"
+                    bad_lines+=("$key (line $ln)")
+                fi
+            fi
+        done < "$CC_DIR/mcp/sap.env"
+
+        if [ ${#bad_lines[@]} -gt 0 ]; then
+            log_check_fail "sap.env: unquoted values with spaces: ${bad_lines[*]} (wrap in double quotes)" 4
+        else
+            log_check_pass "sap.env: values with spaces are properly quoted"
+        fi
+    fi
+
     # sap.env required variables
     if [ -f "$CC_DIR/mcp/sap.env" ]; then
         local missing_vars=()
@@ -513,7 +537,7 @@ check_configuration() {
     if [ "$HAS_PYTHON3" = true ]; then
         for json in "${agent_jsons[@]}"; do
             if [ -f "$CC_DIR/.kiro/agents/$json" ]; then
-                if ! FPATH="$CC_DIR/.kiro/agents/$json" python3 -c "import os,json; json.load(open(os.environ['FPATH']))" 2>/dev/null; then
+                if ! JSON_FILE="$CC_DIR/.kiro/agents/$json" python3 -c "import os,json; json.load(open(os.environ['JSON_FILE']))" 2>/dev/null; then
                     log_check_fail ".kiro/agents/$json: invalid JSON" 4
                     all_valid=false
                 fi
