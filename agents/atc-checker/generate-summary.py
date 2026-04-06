@@ -101,40 +101,6 @@ def generate_package_overview(discovery, progress):
     return "\n".join(lines)
 
 
-def generate_filtering_summary(progress):
-    """Generate Filtering Summary section from progress.json."""
-    filtering = progress.get("filtering", {})
-    lines = ["## Filtering Summary", ""]
-
-    discovery_ref = progress.get("discovery", {})
-    total_found = discovery_ref.get("totalFound", 0)
-    total_checkable = filtering.get("totalCheckable", 0)
-    total_skipped = filtering.get("totalSkipped", 0)
-
-    checkable_types = filtering.get("checkableTypes", [])
-    if checkable_types:
-        lines.append(f"**Checkable Types**: {', '.join(checkable_types)}")
-    lines.append(f"**Total Checkable**: {total_checkable}")
-    lines.append(f"**Total Skipped**: {total_skipped}")
-    lines.append("")
-
-    # Validation check
-    if total_found > 0 and total_found != total_checkable + total_skipped:
-        lines.append(f"**WARNING**: Count mismatch! {total_found} != {total_checkable} + {total_skipped}")
-        lines.append("")
-
-    # Skipped by type breakdown
-    skipped = filtering.get("skippedByType", {})
-    if skipped:
-        lines.append("### Skipped Object Types")
-        lines.append("| Type | Count | Reason |")
-        lines.append("|------|-------|--------|")
-        for obj_type, count in sorted(skipped.items(), key=lambda x: -x[1]):
-            lines.append(f"| {obj_type} | {count} | Not checkable by ATC |")
-
-    return "\n".join(lines)
-
-
 def calculate_level_distribution(objects):
     """Calculate level distribution from objects list."""
     total = len(objects)
@@ -531,13 +497,11 @@ def generate_summary(package_name):
 | System | {progress.get("system", "N/A")} |
 | Variant | {variant} |
 | Generated | {timestamp} |
-| Total Objects (Checkable) | {len(objects)} |
+| Total Objects | {len(objects)} |
 | Checked | {len(checked_objects)} |
 | Failed | {len(failed_objects)} |
 
 {generate_package_overview(discovery, progress)}
-
-{generate_filtering_summary(progress)}
 
 ## Clean Core Level Distribution
 
@@ -609,7 +573,7 @@ def generate_summary(package_name):
     # Summary stats
     print(f"\nSummary generated successfully!", file=sys.stderr)
     print(f"  Package: {package}", file=sys.stderr)
-    print(f"  Total objects (checkable): {len(objects)}", file=sys.stderr)
+    print(f"  Total objects: {len(objects)}", file=sys.stderr)
     if discovery:
         total_from_sap = discovery.get("results", {}).get("totalFound", 0)
         print(f"  Total from SAP: {total_from_sap}", file=sys.stderr)

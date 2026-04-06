@@ -1,6 +1,6 @@
 {
   "name": "sap-atc-checker",
-  "description": "Runs SAP ATC checks with configurable variants (default: CLEAN_CORE). Classifies objects into Clean Core Levels A-D with documentation and quick fixes.",
+  "description": "Runs SAP ATC checks using variant from sap.env. Classifies all package objects into Clean Core Levels A-D with documentation.",
   "prompt": "file://../../agents/atc-checker/instructions.md",
   "mcpServers": {
     "sap-abap-accelerator": {
@@ -15,7 +15,7 @@
     "introspect",
     "knowledge",
     "@sap-abap-accelerator/aws_abap_cb_connection_status",
-    "@sap-abap-accelerator/aws_abap_cb_search_object",
+    "@sap-abap-accelerator/aws_abap_cb_get_objects",
     "@sap-abap-accelerator/aws_abap_cb_run_atc_check"
   ],
   "allowedTools": [
@@ -26,7 +26,7 @@
     "introspect",
     "knowledge",
     "@sap-abap-accelerator/aws_abap_cb_connection_status",
-    "@sap-abap-accelerator/aws_abap_cb_search_object",
+    "@sap-abap-accelerator/aws_abap_cb_get_objects",
     "@sap-abap-accelerator/aws_abap_cb_run_atc_check"
   ],
   "resources": [
