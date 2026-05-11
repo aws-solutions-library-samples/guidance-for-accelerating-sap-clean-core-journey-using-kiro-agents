@@ -28,7 +28,7 @@ from collections import defaultdict
 
 
 # Pre-compiled regex pattern for package name validation
-PACKAGE_NAME_PATTERN = re.compile(r'^[A-Z][A-Z0-9_]{0,29}$')
+PACKAGE_NAME_PATTERN = re.compile(r'^[$A-Z][A-Z0-9_]{0,29}$')
 
 
 def get_element_text(elem, tag_name):

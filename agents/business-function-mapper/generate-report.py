@@ -39,9 +39,9 @@ def validate_package_name(name):
     if not name:
         print("ERROR: Package name is required", file=sys.stderr)
         sys.exit(1)
-    if not re.match(r'^[A-Z][A-Z0-9_]{0,29}$', name):
+    if not re.match(r'^[$A-Z][A-Z0-9_]{0,29}$', name):
         print(f"ERROR: Invalid package name: {name}", file=sys.stderr)
-        print("Package name must start with A-Z and contain only A-Z, 0-9, _ (max 30 chars)", file=sys.stderr)
+        print("Package name must start with A-Z or $ and contain only A-Z, 0-9, _ (max 30 chars)", file=sys.stderr)
         sys.exit(1)
     return name
 

@@ -26,7 +26,7 @@ CC_DIR = os.environ.get("CC_DIR") or str(Path(__file__).resolve().parent.parent.
 BASE_DIR = CC_DIR  # Alias for compatibility
 
 # Pre-compiled regex patterns for API extraction (compiled once at module load)
-PACKAGE_NAME_PATTERN = re.compile(r'^[A-Z][A-Z0-9_]{0,29}$')
+PACKAGE_NAME_PATTERN = re.compile(r'^[$A-Z][A-Z0-9_]{0,29}$')
 
 API_PATTERNS = [
     # Classes (CL_*, CX_*, IF_*)
@@ -65,7 +65,7 @@ def validate_package_name(name):
         sys.exit(1)
     if not PACKAGE_NAME_PATTERN.match(name):
         print(f"ERROR: Invalid package name: {name}", file=sys.stderr)
-        print("Package name must start with A-Z and contain only A-Z, 0-9, _ (max 30 chars)", file=sys.stderr)
+        print("Package name must start with A-Z or $ and contain only A-Z, 0-9, _ (max 30 chars)", file=sys.stderr)
         sys.exit(1)
     return name
 
